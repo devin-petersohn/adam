@@ -165,7 +165,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
       }, preservesPartitioning = true)
       .repartitionAndSortWithinPartitions(new ReferenceRegionRangePartitioner(finalPartitionNumber.toInt))
 
-    finalPartitionedRDD.persist()
+    finalPartitionedRDD.cache()
 
     val tempPartitionMap = finalPartitionedRDD.mapPartitions(iter =>
       getRegionBoundsFromPartition(iter.map(f => (f._1._1, f._2))), preservesPartitioning = true).collect
@@ -1090,6 +1090,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
             new ReferenceRegionRangePartitioner(numPartitions))
           .map(_._2)
       }
+    finalPartitionedRDD.cache()
     // here we get the new partition map
     // for now, we can't use the left RDD's partition map because
     // the bounds don't always include the values we copartitioned with.
@@ -1151,6 +1152,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     // here we let spark do the heavy lifting
     val partitionedRDD = flattenRddByRegions()
       .sortBy(f => f._1, ascending = true, partitions)
+    partitionedRDD.cache()
     val tempPartitionMap = partitionedRDD.mapPartitions(iter =>
       getRegionBoundsFromPartition(iter), preservesPartitioning = true).collect
 
