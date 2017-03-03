@@ -38,7 +38,6 @@ import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
-import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
 private[rdd] class JavaSaveArgs(var outputPath: String,
@@ -206,7 +205,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     if (iter.isEmpty || partitionMap.isEmpty) {
       Iterator()
     } else {
-      // we put the records that map to multiple locations in this ListBuffer
+      // we put the records that map to multiple locations in this Map
       // IMPORTANT: these are records that map to multiple locations on this
       // partition. There should be very few of these
       // we use this because we have to keep track of which ReferenceRegion
@@ -224,12 +223,6 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
         (regionsOnThiPartition, f)
       })
         .map(f => {
-          if (f._1.length == 0) {
-            println(f._2)
-            println(partitionMap.get)
-            println("You screwed up")
-            exit(-1)
-          }
           // the usual case: only one ReferenceRegion for the record
           if (f._1.length == 1) {
             (f._1.head, f._2)
