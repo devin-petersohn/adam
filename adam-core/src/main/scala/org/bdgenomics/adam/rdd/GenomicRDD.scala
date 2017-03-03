@@ -102,7 +102,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
   val rdd: RDD[T]
 
   /**
-   * The sequence dictionary describing the reference assembly this data is
+   * The sequence dictionary describing the reference assembly these data are
    * aligned to.
    */
   val sequences: SequenceDictionary
@@ -130,10 +130,10 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
 
   /**
    * This repartition method repartitions all data in this.rdd and distributes it as evenly as possible
-   * into the number of partitions provided. The data in this.rdd is already sorted (by ReferenceRegion.start)
+   * into the number of partitions provided. The data in rdd are already sorted (by ReferenceRegion.start)
    * so we ensure that it is kept that way as we move data around.
    *
-   * Data is repartitioned in lists to maintain the sorted order. After the repartition, the lists are placed
+   * Data are repartitioned in lists to maintain the sorted order. After the repartition, the lists are placed
    * in the correct order based on their original sorted order.
    *
    * @param partitions the number of partitions to repartition this.rdd into
@@ -680,17 +680,13 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
    * and sort of the rightRdd if necessary.
    *
    *  @param genomicRdd The RDD to join to.
-   *  @return A tuple containing both RDDs ready to join, the partitionMap and the number
-   *          of partitions.
-   *          _._1 is the leftRdd,
-   *          _._2 is the rightRdd,
-   *          _._3 is the partitionMap for the joined RDDs,
-   *          _._4 is the number of partitions
+   *  @param optPartitions An optional number of partitions.
+   *  @return a case class containing all the prepared data for ShuffleRegionJoins
    */
   private def prepareForShuffleRegionJoin[X, Y <: GenomicRDD[X, Y], Z <: GenomicRDD[(T, X), Z]](
     genomicRdd: GenomicRDD[X, Y],
     optPartitions: Option[Int] = None)(
-      implicit tTag: ClassTag[T], xTag: ClassTag[X]): (RDD[(ReferenceRegion, T)], RDD[(ReferenceRegion, X)], Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]], Int) = {
+      implicit tTag: ClassTag[T], xTag: ClassTag[X]): PreparedForShuffleRegionJoin[T, X] = {
 
     // did the user provide a set partition count?
     // if no, take the max partition count from our rdds
@@ -747,7 +743,11 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
           }
         })).map(Some(_)))
     // Co-partitioned and properly keyed with ReferenceRegions and partition index
-    (leftRddToJoin, rightRddToJoin, partitionBoundsForJoin, partitions)
+    PreparedForShuffleRegionJoin[T, X](
+      leftRddToJoin,
+      rightRddToJoin,
+      partitionBoundsForJoin,
+      partitions)
   }
 
   /**
@@ -768,8 +768,14 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     optPartitions: Option[Int] = None)(
       implicit tTag: ClassTag[T], xTag: ClassTag[X]): GenomicRDD[(T, X), Z] = {
 
-    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+    val preparedForShuffleRegionJoin =
       prepareForShuffleRegionJoin(genomicRdd, optPartitions)
+
+    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+      (preparedForShuffleRegionJoin.leftRddToJoin,
+        preparedForShuffleRegionJoin.rightRddToJoin,
+        preparedForShuffleRegionJoin.partitionBoundsForJoin,
+        preparedForShuffleRegionJoin.partitions)
 
     // what sequences do we wind up with at the end?
     val combinedSequences = sequences ++ genomicRdd.sequences
@@ -805,8 +811,14 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     optPartitions: Option[Int] = None)(
       implicit tTag: ClassTag[T], xTag: ClassTag[X]): GenomicRDD[(Option[T], X), Z] = {
 
-    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+    val preparedForShuffleRegionJoin =
       prepareForShuffleRegionJoin(genomicRdd, optPartitions)
+
+    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+      (preparedForShuffleRegionJoin.leftRddToJoin,
+        preparedForShuffleRegionJoin.rightRddToJoin,
+        preparedForShuffleRegionJoin.partitionBoundsForJoin,
+        preparedForShuffleRegionJoin.partitions)
 
     // what sequences do we wind up with at the end?
     val combinedSequences = sequences ++ genomicRdd.sequences
@@ -843,8 +855,14 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     optPartitions: Option[Int] = None)(
       implicit tTag: ClassTag[T], xTag: ClassTag[X]): GenomicRDD[(T, Option[X]), Z] = {
 
-    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+    val preparedForShuffleRegionJoin =
       prepareForShuffleRegionJoin(genomicRdd, optPartitions)
+
+    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+      (preparedForShuffleRegionJoin.leftRddToJoin,
+        preparedForShuffleRegionJoin.rightRddToJoin,
+        preparedForShuffleRegionJoin.partitionBoundsForJoin,
+        preparedForShuffleRegionJoin.partitions)
 
     // what sequences do we wind up with at the end?
     val combinedSequences = sequences ++ genomicRdd.sequences
@@ -880,8 +898,14 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     optPartitions: Option[Int] = None)(
       implicit tTag: ClassTag[T], xTag: ClassTag[X]): GenomicRDD[(Option[T], Option[X]), Z] = {
 
-    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+    val preparedForShuffleRegionJoin =
       prepareForShuffleRegionJoin(genomicRdd, optPartitions)
+
+    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+      (preparedForShuffleRegionJoin.leftRddToJoin,
+        preparedForShuffleRegionJoin.rightRddToJoin,
+        preparedForShuffleRegionJoin.partitionBoundsForJoin,
+        preparedForShuffleRegionJoin.partitions)
 
     // what sequences do we wind up with at the end?
     val combinedSequences = sequences ++ genomicRdd.sequences
@@ -918,8 +942,14 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     optPartitions: Option[Int] = None)(
       implicit tTag: ClassTag[T], xTag: ClassTag[X]): GenomicRDD[(T, Iterable[X]), Z] = {
 
-    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+    val preparedForShuffleRegionJoin =
       prepareForShuffleRegionJoin(genomicRdd, optPartitions)
+
+    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+      (preparedForShuffleRegionJoin.leftRddToJoin,
+        preparedForShuffleRegionJoin.rightRddToJoin,
+        preparedForShuffleRegionJoin.partitionBoundsForJoin,
+        preparedForShuffleRegionJoin.partitions)
 
     // what sequences do we wind up with at the end?
     val combinedSequences = sequences ++ genomicRdd.sequences
@@ -959,8 +989,14 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     optPartitions: Option[Int] = None)(
       implicit tTag: ClassTag[T], xTag: ClassTag[X]): GenomicRDD[(Option[T], Iterable[X]), Z] = {
 
-    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+    val preparedForShuffleRegionJoin =
       prepareForShuffleRegionJoin(genomicRdd, optPartitions)
+
+    val (leftRddToJoin, rightRddToJoin, joinedPartitionMap, partitions) =
+      (preparedForShuffleRegionJoin.leftRddToJoin,
+        preparedForShuffleRegionJoin.rightRddToJoin,
+        preparedForShuffleRegionJoin.partitionBoundsForJoin,
+        preparedForShuffleRegionJoin.partitions)
 
     // what sequences do we wind up with at the end?
     val combinedSequences = sequences ++ genomicRdd.sequences
@@ -983,7 +1019,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
    * that way.
    *
    * The simplest way of sending data to the correct node is to just send everything that has a
-   * start position that could fall within the boundaries
+   * start position that could fall within the boundaries.
    *
    * This is best used under the condition that (repeatedly) repartitioning is more expensive than
    * calculating the proper location of the records of this.rdd. It requires a pass through the
@@ -1037,7 +1073,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
       // mapped to multiple ReferenceRegions, thus we use the flattenRddByRegions
       val referenceRegionKeyedGenomicRDD = if (!sorted) {
         flattenRddByRegions()
-        // it the data is sorted, we have already duplicated the records, so this
+        // if the data are sorted, we have already duplicated the records, so this
         // ensures that we don't perform an additional duplication of the data
       } else {
         rdd.mapPartitionsWithIndex((idx, iter) =>
@@ -1054,6 +1090,9 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
           // partitionMap is not guaranteed to cover all possible ReferenceRegions,
           // and this presents a problem when we have records that do not map to
           // any partition. without this, we would lose those records
+          //
+          // NOTE: NOT THREAD SAFE
+          //
           var lastIndex = 0
 
           val rangeOfPartitions = partitionMapIntervals.get(f._1)
@@ -1131,8 +1170,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
    * partitioned to be roughly uniform in size across all nodes.
    *
    * @param partitions The number of partitions to split the data into
-   * @return A SortedGenomicRDDMixIn that contains the sorted and partitioned
-   *         RDD
+   * @return A U that contains the sorted and partitioned RDD
    */
   def repartitionAndSort(partitions: Int = rdd.partitions.length)(implicit c: ClassTag[T]): U = {
     // here we let spark do the heavy lifting
@@ -1160,6 +1198,12 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
 
     replaceRdd(partitionedRDD.values, Some(newPartitionMap))
   }
+
+  private case class PreparedForShuffleRegionJoin[T, X](
+    leftRddToJoin: RDD[(ReferenceRegion, T)],
+    rightRddToJoin: RDD[(ReferenceRegion, X)],
+    partitionBoundsForJoin: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]],
+    partitions: Int)
 }
 
 private case class GenericGenomicRDD[T](
@@ -1276,7 +1320,7 @@ abstract class MultisampleAvroGenomicRDD[T <% IndexedRecord: Manifest, U <: Mult
 }
 
 /**
- * An abstract class that extends GenomicRDD and where the underlying data is
+ * An abstract class that extends GenomicRDD and where the underlying data are
  * Avro IndexedRecords. This abstract class provides methods for saving to
  * Parquet, and provides hooks for writing the metadata.
  */
