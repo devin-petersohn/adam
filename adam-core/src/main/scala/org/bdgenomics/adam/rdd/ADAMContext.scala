@@ -65,7 +65,7 @@ import org.json4s.jackson.JsonMethods._
 import org.seqdoop.hadoop_bam._
 import org.seqdoop.hadoop_bam.util._
 import scala.collection.JavaConversions._
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 import scala.util.parsing.json.JSON
 
@@ -753,7 +753,7 @@ class ADAMContext(@transient val sc: SparkContext) extends Serializable with Log
    * @param filename the filename for the metadata
    * @return a partition map if the data was written sorted, or an empty Seq if unsorted
    */
-  private[rdd] def extractPartitionMap(filename: String): Option[Seq[Option[(ReferenceRegion, ReferenceRegion)]]] = {
+  private[rdd] def extractPartitionMap(filename: String): Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = {
     // the sorted metadata is always stored with the sequence dictionary metadata
     val path = new Path(filename + "/_partitionMap.avro")
     val fs = path.getFileSystem(sc.hadoopConfiguration)
@@ -785,7 +785,7 @@ class ADAMContext(@transient val sc: SparkContext) extends Serializable with Log
         // this is used to parse out the json. we use default because we don't need
         // anything special
         implicit val formats = DefaultFormats
-        val partitionMapBuilder = new ListBuffer[Option[(ReferenceRegion, ReferenceRegion)]]
+        val partitionMapBuilder = new ArrayBuffer[Option[(ReferenceRegion, ReferenceRegion)]]
         // using json4s to parse the json values
         val parsedJson = (parse(partitionMap.get) \ "partitionMap").values
           // we have to cast it because the JSON parser does not actually give
@@ -819,7 +819,7 @@ class ADAMContext(@transient val sc: SparkContext) extends Serializable with Log
           }
         }
 
-        Some(partitionMapBuilder)
+        Some(partitionMapBuilder.toArray)
       }
     } catch {
       // if no sequence dictionary was saved, we do not have sorted knowledge of the data

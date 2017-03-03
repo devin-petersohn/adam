@@ -87,7 +87,7 @@ case class VariantContextRDD(rdd: RDD[VariantContext],
                              sequences: SequenceDictionary,
                              @transient samples: Seq[Sample],
                              @transient headerLines: Seq[VCFHeaderLine] = DefaultHeaderLines.allHeaderLines,
-                             partitionMap: Option[Seq[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends MultisampleGenomicRDD[VariantContext, VariantContextRDD]
+                             partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends MultisampleGenomicRDD[VariantContext, VariantContextRDD]
     with Logging {
 
   override val sorted = partitionMap.isDefined
@@ -223,7 +223,7 @@ case class VariantContextRDD(rdd: RDD[VariantContext],
    *   been replaced.
    */
   protected def replaceRdd(newRdd: RDD[VariantContext],
-                           newPartitionMap: Option[Seq[Option[(ReferenceRegion, ReferenceRegion)]]] = None): VariantContextRDD = {
+                           newPartitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): VariantContextRDD = {
     copy(rdd = newRdd, partitionMap = newPartitionMap)
   }
 

@@ -421,7 +421,7 @@ private trait SortedIntervalPartitionJoinWithVictims[T, U, RT, RU]
     postProcessHits(cache
       .filter(y => {
         // everything that overlaps the left region is a hit
-        y._1.covers(currentLeftRegion)
+        y._1.overlaps(currentLeftRegion)
       })
       .map(y => y._2)
       .toIterator, currentLeft)

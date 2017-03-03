@@ -935,7 +935,7 @@ case class AlignedReadRDD(
     rdd: RDD[AlignmentRecord],
     sequences: SequenceDictionary,
     recordGroups: RecordGroupDictionary,
-    partitionMap: Option[Seq[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends AlignmentRecordRDD {
+    partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends AlignmentRecordRDD {
 
   override val sorted = partitionMap.isDefined
 
@@ -948,7 +948,7 @@ case class AlignedReadRDD(
 
   protected def replaceRdd(
     newRdd: RDD[AlignmentRecord],
-    newPartitionMap: Option[Seq[Option[(ReferenceRegion, ReferenceRegion)]]] = None): AlignedReadRDD = {
+    newPartitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): AlignedReadRDD = {
 
     copy(rdd = newRdd, partitionMap = newPartitionMap)
   }
@@ -970,13 +970,13 @@ object UnalignedReadRDD {
 case class UnalignedReadRDD(
   rdd: RDD[AlignmentRecord],
   recordGroups: RecordGroupDictionary,
-  partitionMap: Option[Seq[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends AlignmentRecordRDD
+  partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends AlignmentRecordRDD
     with Unaligned {
 
   override val sorted = partitionMap.isDefined
 
   protected def replaceRdd(newRdd: RDD[AlignmentRecord],
-                           newPartitionMap: Option[Seq[Option[(ReferenceRegion, ReferenceRegion)]]] = None): UnalignedReadRDD = {
+                           newPartitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): UnalignedReadRDD = {
     copy(rdd = newRdd, partitionMap = newPartitionMap)
   }
 
