@@ -1077,8 +1077,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
       }
 
       referenceRegionKeyedGenomicRDD.mapPartitions(iter => {
-        iter.flatMap(f => {
-          // have a lastIndex allows us to keep track of where we previously
+        // have a lastIndex allows us to keep track of where we previously
           // assigned the last record. we need to keep track of this because our
           // partitionMap is not guaranteed to cover all possible ReferenceRegions,
           // and this presents a problem when we have records that do not map to
@@ -1087,8 +1086,9 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
           // NOTE: NOT THREAD SAFE
           //
           var lastIndex = 0
-
+        iter.flatMap(f => {
           val rangeOfPartitions = partitionMapIntervals.get(f._1)
+
           if (rangeOfPartitions.isEmpty) {
             // if we come accross a positions that doesn't overlap with any partition,
             // use the same index as the most recent record.
@@ -1143,17 +1143,18 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
       // This means that there is no data on the partition, so we have no bounds
       Iterator(None)
     } else {
-      val firstRegion = iter.next._1
+      val firstRegion = iter.next
       val lastRegion =
         if (iter.hasNext) {
           // we have to make sure we get the full bounds of this partition, this
-          // includes any extremely long regions
-          iter.maxBy(f => (f._1.referenceName, f._1.end, f._1.start))._1
+          // includes any extremely long regions. we include the firstRegion for
+          // the case that the first region is extremely long
+          (iter ++ Iterator(firstRegion)).maxBy(f => (f._1.referenceName, f._1.end, f._1.start))
           // only one record on this partition, so this is the extent of the bounds
         } else {
           firstRegion
         }
-      Iterator(Some((firstRegion, lastRegion)))
+      Iterator(Some((firstRegion._1, lastRegion._1)))
     }
   }
 
