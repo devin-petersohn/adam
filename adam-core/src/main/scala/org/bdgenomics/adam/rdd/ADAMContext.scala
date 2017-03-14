@@ -638,7 +638,7 @@ class ADAMContext(@transient val sc: SparkContext) extends Serializable with Log
     val bamFiles = getFsAndFiles(path).filter(p => p.toString.endsWith(".bam"))
 
     require(bamFiles.nonEmpty,
-      "Did not find any files at %s.".format(path))
+      "Did not find any BAM files at %s.".format(path))
     val (seqDict, readGroups) = bamFiles
       .map(fp => {
         // We need to separately read the header, so that we can inject the sequence dictionary
@@ -747,8 +747,8 @@ class ADAMContext(@transient val sc: SparkContext) extends Serializable with Log
   }
 
   /**
-   * This method gets the sort and partition map metadata from the header of the file
-   * given as input.
+   * Gets the sort and partition map metadata from the header of the file given
+   * as input.
    *
    * @param filename the filename for the metadata
    * @return a partition map if the data was written sorted, or an empty Seq if unsorted

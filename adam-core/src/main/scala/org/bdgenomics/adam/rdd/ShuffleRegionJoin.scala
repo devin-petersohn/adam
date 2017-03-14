@@ -66,7 +66,7 @@ sealed abstract class ShuffleRegionJoin[T: ClassTag, U: ClassTag, RT, RU]
 
   // this function carries out the sort-merge join inside each Spark partition.
   // It assumes the iterators are sorted.
-  def sweep(
+  private def sweep(
     leftIterWithPartitionBounds: Iterator[(Option[(ReferenceRegion, ReferenceRegion)], Iterator[(ReferenceRegion, T)])],
     rightIter: Iterator[(ReferenceRegion, U)]): Iterator[(RT, RU)] = {
     val (partitionBounds, leftIter) = leftIterWithPartitionBounds.next
@@ -303,7 +303,8 @@ private trait VictimlessSortedIntervalPartitionJoin[T, U, RU]
   protected def pruneCache(to: ReferenceRegion) {
     // remove values from cache that are less that the to and that do
     // not overlap to.
-    cache --= cache.takeWhile(f => f._1.compareTo(to) < 0 && !f._1.covers(to))
+    cache.trimStart(
+      cache.takeWhile(f => f._1.compareTo(to) < 0 && !f._1.covers(to)).size)
   }
 
   /**
@@ -433,7 +434,7 @@ private trait SortedIntervalPartitionJoinWithVictims[T, U, RT, RU]
   protected def advanceCache(until: ReferenceRegion): Unit = {
     while (right.hasNext && (right.head._1.compareTo(until) <= 0 || right.head._1.covers(until))) {
       val x = right.next()
-      victimCache += x._1 -> x._2
+      victimCache += ((x._1, x._2))
     }
   }
 
@@ -443,17 +444,22 @@ private trait SortedIntervalPartitionJoinWithVictims[T, U, RT, RU]
    */
   protected def pruneCache(to: ReferenceRegion) {
     // remove everything from cache that will never again be joined
-    cache --= cache.takeWhile(f => f._1.compareTo(to) < 0 && !f._1.covers(to))
+    cache.trimStart(
+      cache.takeWhile(f => f._1.compareTo(to) < 0 && !f._1.covers(to)).size)
     // add the values from the victimCache that are candidates to be joined
     // the the current left
-    cache ++= victimCache.takeWhile(f => f._1.compareTo(to) > 0 || f._1.covers(to))
+    cache ++= 
+      victimCache.takeWhile(f => f._1.compareTo(to) > 0 || f._1.covers(to))
     // remove the values from the victimCache that were just added to cache
-    victimCache --= victimCache.takeWhile(f => f._1.compareTo(to) > 0 || f._1.covers(to))
+    victimCache.trimStart(
+      victimCache.takeWhile(f => f._1.compareTo(to) > 0 || f._1.covers(to)).size)
     // add to pruned any values that do not have any matches to a left
     // and perform post processing to format the new pruned values
-    pruned ++= victimCache.takeWhile(f => f._1.compareTo(to) <= 0).map(u => postProcessPruned(u._2))
+    pruned ++= 
+      victimCache.takeWhile(f => f._1.compareTo(to) <= 0)
+      .map(u => postProcessPruned(u._2))
     // remove the values from victimCache that were added to pruned
-    victimCache --= victimCache.takeWhile(f => f._1.compareTo(to) <= 0)
+    victimCache.trimStart(victimCache.takeWhile(f => f._1.compareTo(to) <= 0).size)
   }
 
   protected def postProcessPruned(pruned: U): (RT, RU)

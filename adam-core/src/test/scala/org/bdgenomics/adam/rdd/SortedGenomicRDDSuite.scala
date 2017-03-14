@@ -64,6 +64,27 @@ class SortedGenomicRDDSuite extends SparkFunSuite {
     SequenceRecord("chr11,",135006516,None,None,None,None,None,None,referenceIndex=Some(10))
   ))
 
+  def time[R](block: => R): R = {
+    val t0 = System.nanoTime()
+    val result = block    // call-by-name
+    val t1 = System.nanoTime()
+    println("Elapsed time: " + (t1 - t0) + "ns")
+    result
+  }
+
+  sparkTest("Testing Timing of ShuffleJoin") {
+    val x = sc.loadBed("/Users/DevinPetersohn/Downloads/bedtools-data/cpg.bed")
+    val y = sc.loadBed("/Users/DevinPetersohn/Downloads/bedtools-data/exons.bed")
+    x.rdd.cache()
+    x.rdd.count()
+    y.rdd.cache()
+    y.rdd.count
+    time {
+      y.shuffleRegionJoin(x).rdd.count
+    }
+    sys.exit()
+  }
+
   sparkTest("testing that partition and sort provide correct outputs") {
     // load in a generic bam
     val x = sc.loadBam(getClass.getResource("/bqsr1.sam").getFile)
