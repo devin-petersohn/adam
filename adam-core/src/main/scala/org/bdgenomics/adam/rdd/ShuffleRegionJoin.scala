@@ -303,8 +303,14 @@ private trait VictimlessSortedIntervalPartitionJoin[T, U, RU]
   protected def pruneCache(to: ReferenceRegion) {
     // remove values from cache that are less that the to and that do
     // not overlap to.
-    cache.trimStart(
-      cache.takeWhile(f => f._1.compareTo(to) < 0 && !f._1.covers(to)).size)
+    cache.trimStart({
+      val trimLocation = cache.indexWhere(f => !(f._1.compareTo(to) < 0 && !f._1.covers(to)))
+      if (trimLocation < 0) {
+        0
+      } else {
+        trimLocation
+      }
+    })
   }
 
   /**
@@ -444,22 +450,27 @@ private trait SortedIntervalPartitionJoinWithVictims[T, U, RT, RU]
    */
   protected def pruneCache(to: ReferenceRegion) {
     // remove everything from cache that will never again be joined
-    cache.trimStart(
-      cache.takeWhile(f => f._1.compareTo(to) < 0 && !f._1.covers(to)).size)
+    cache.trimStart({
+      val trimLocation = cache.indexWhere(f => !(f._1.compareTo(to) < 0 && !f._1.covers(to)))
+      if (trimLocation < 0) {
+        0
+      } else {
+        trimLocation
+      }
+    })
     // add the values from the victimCache that are candidates to be joined
     // the the current left
-    cache ++= 
-      victimCache.takeWhile(f => f._1.compareTo(to) > 0 || f._1.covers(to))
+    val cacheAddition = victimCache.takeWhile(f => f._1.compareTo(to) > 0 || f._1.covers(to))
+    cache ++= cacheAddition
     // remove the values from the victimCache that were just added to cache
-    victimCache.trimStart(
-      victimCache.takeWhile(f => f._1.compareTo(to) > 0 || f._1.covers(to)).size)
+    victimCache.trimStart(cacheAddition.size)
     // add to pruned any values that do not have any matches to a left
     // and perform post processing to format the new pruned values
-    pruned ++= 
-      victimCache.takeWhile(f => f._1.compareTo(to) <= 0)
+    val prunedAddition = victimCache.takeWhile(f => f._1.compareTo(to) <= 0)
+    pruned ++= prunedAddition
       .map(u => postProcessPruned(u._2))
     // remove the values from victimCache that were added to pruned
-    victimCache.trimStart(victimCache.takeWhile(f => f._1.compareTo(to) <= 0).size)
+    victimCache.trimStart(prunedAddition.size)
   }
 
   protected def postProcessPruned(pruned: U): (RT, RU)

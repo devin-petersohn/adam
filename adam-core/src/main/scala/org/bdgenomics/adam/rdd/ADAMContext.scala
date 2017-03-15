@@ -560,7 +560,7 @@ class ADAMContext(@transient val sc: SparkContext) extends Serializable with Log
     })
 
     require(filteredFiles.nonEmpty,
-      "Did not find any files at %s.".format(path))
+      "Did not find any BAM files at %s.".format(path))
 
     val (seqDict, readGroups) =
       filteredFiles

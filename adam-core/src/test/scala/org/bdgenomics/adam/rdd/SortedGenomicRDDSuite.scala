@@ -17,7 +17,7 @@
  */
 package org.bdgenomics.adam.rdd
 
-import org.bdgenomics.adam.models.{SequenceRecord, SequenceDictionary, ReferenceRegion}
+import org.bdgenomics.adam.models.{ SequenceRecord, SequenceDictionary, ReferenceRegion }
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.adam.rdd.feature.FeatureRDD
 import org.bdgenomics.adam.rdd.variant.GenotypeRDD
@@ -41,49 +41,28 @@ class SortedGenomicRDDSuite extends SparkFunSuite {
   val chromosomeLengths = Map(1 -> 248956422, 2 -> 242193529, 3 -> 198295559, 4 -> 190214555, 5 -> 181538259, 6 -> 170805979, 7 -> 159345973, 8 -> 145138636, 9 -> 138394717, 10 -> 133797422, 11 -> 135086622, 12 -> 133275309, 13 -> 114364328, 14 -> 107043718, 15 -> 101991189, 16 -> 90338345, 17 -> 83257441, 18 -> 80373285, 19 -> 58617616, 20 -> 64444167, 21 -> 46709983, 22 -> 50818468)
 
   val sd = new SequenceDictionary(Vector(
-    SequenceRecord("chr20",63025520,None,None,None,None,None,None,Some(19)),
-    SequenceRecord("chr7",159138663,None,None,None,None,None,None,Some(6)),
-    SequenceRecord("chr18",78077248,None,None,None,None,None,None,referenceIndex=Some(17)),
-    SequenceRecord("chr13",115169878,None,None,None,None,None,None,referenceIndex=Some(12)),
-    SequenceRecord("chr3",198022430,None,None,None,None,None,None,referenceIndex=Some(2)),
-    SequenceRecord("chr6",171115067,None,None,None,None,None,None,referenceIndex=Some(5)),
-    SequenceRecord("chr9",141213431,None,None,None,None,None,None,referenceIndex=Some(8)),
-    SequenceRecord("chr16",90354753,None,None,None,None,None,None,referenceIndex=Some(15)),
-    SequenceRecord("chr10",135534747,None,None,None,None,None,None,referenceIndex=Some(9)),
-    SequenceRecord("chr12",133851895,None,None,None,None,None,None,referenceIndex=Some(11)),
-    SequenceRecord("chr8",146364022,None,None,None,None,None,None,referenceIndex=Some(7)),
-    SequenceRecord("chr19",59128983,None,None,None,None,None,None,referenceIndex=Some(18)),
-    SequenceRecord("chr2",243199373,None,None,None,None,None,None,referenceIndex=Some(1)),
-    SequenceRecord("chr15",102531392,None,None,None,None,None,None,referenceIndex=Some(14)),
-    SequenceRecord("chr14",107349540,None,None,None,None,None,None,referenceIndex=Some(13)),
-    SequenceRecord("chr17",81195210,None,None,None,None,None,None,referenceIndex=Some(16)),
-    SequenceRecord("chr5",180915260,None,None,None,None,None,None,referenceIndex=Some(4)),
-    SequenceRecord("chr4",191154276,None,None,None,None,None,None,referenceIndex=Some(3)),
-    SequenceRecord("chr1",249250621,None,None,None,None,None,None,referenceIndex=Some(0)),
-    SequenceRecord("chr21",48129895,None,None,None,None,None,None,referenceIndex=Some(20)),
-    SequenceRecord("chr11,",135006516,None,None,None,None,None,None,referenceIndex=Some(10))
+    SequenceRecord("chr20", 63025520, None, None, None, None, None, None, Some(19)),
+    SequenceRecord("chr7", 159138663, None, None, None, None, None, None, Some(6)),
+    SequenceRecord("chr18", 78077248, None, None, None, None, None, None, referenceIndex = Some(17)),
+    SequenceRecord("chr13", 115169878, None, None, None, None, None, None, referenceIndex = Some(12)),
+    SequenceRecord("chr3", 198022430, None, None, None, None, None, None, referenceIndex = Some(2)),
+    SequenceRecord("chr6", 171115067, None, None, None, None, None, None, referenceIndex = Some(5)),
+    SequenceRecord("chr9", 141213431, None, None, None, None, None, None, referenceIndex = Some(8)),
+    SequenceRecord("chr16", 90354753, None, None, None, None, None, None, referenceIndex = Some(15)),
+    SequenceRecord("chr10", 135534747, None, None, None, None, None, None, referenceIndex = Some(9)),
+    SequenceRecord("chr12", 133851895, None, None, None, None, None, None, referenceIndex = Some(11)),
+    SequenceRecord("chr8", 146364022, None, None, None, None, None, None, referenceIndex = Some(7)),
+    SequenceRecord("chr19", 59128983, None, None, None, None, None, None, referenceIndex = Some(18)),
+    SequenceRecord("chr2", 243199373, None, None, None, None, None, None, referenceIndex = Some(1)),
+    SequenceRecord("chr15", 102531392, None, None, None, None, None, None, referenceIndex = Some(14)),
+    SequenceRecord("chr14", 107349540, None, None, None, None, None, None, referenceIndex = Some(13)),
+    SequenceRecord("chr17", 81195210, None, None, None, None, None, None, referenceIndex = Some(16)),
+    SequenceRecord("chr5", 180915260, None, None, None, None, None, None, referenceIndex = Some(4)),
+    SequenceRecord("chr4", 191154276, None, None, None, None, None, None, referenceIndex = Some(3)),
+    SequenceRecord("chr1", 249250621, None, None, None, None, None, None, referenceIndex = Some(0)),
+    SequenceRecord("chr21", 48129895, None, None, None, None, None, None, referenceIndex = Some(20)),
+    SequenceRecord("chr11,", 135006516, None, None, None, None, None, None, referenceIndex = Some(10))
   ))
-
-  def time[R](block: => R): R = {
-    val t0 = System.nanoTime()
-    val result = block    // call-by-name
-    val t1 = System.nanoTime()
-    println("Elapsed time: " + (t1 - t0) + "ns")
-    result
-  }
-
-  sparkTest("Testing Timing of ShuffleJoin") {
-    val x = sc.loadBed("/Users/DevinPetersohn/Downloads/bedtools-data/cpg.bed")
-    val y = sc.loadBed("/Users/DevinPetersohn/Downloads/bedtools-data/exons.bed")
-    x.rdd.cache()
-    x.rdd.count()
-    y.rdd.cache()
-    y.rdd.count
-    time {
-      y.shuffleRegionJoin(x).rdd.count
-    }
-    sys.exit()
-  }
 
   sparkTest("testing that partition and sort provide correct outputs") {
     // load in a generic bam
@@ -252,9 +231,9 @@ class SortedGenomicRDDSuite extends SparkFunSuite {
     val features = FeatureRDD(sc.parallelize(featureRddBuilder), sd)
     val x = features.copartitionByReferenceRegion(genotypes)
     val z = x.rdd.mapPartitionsWithIndex((idx, iter) => {
-      if(idx == 0 && iter.size != 6) {
+      if (idx == 0 && iter.size != 6) {
         Iterator(true)
-      } else if(idx == 1 && iter.size != 2) {
+      } else if (idx == 1 && iter.size != 2) {
         Iterator(true)
       } else {
         Iterator()
@@ -265,7 +244,6 @@ class SortedGenomicRDDSuite extends SparkFunSuite {
       iter.map(f => (idx, f))
     }).collect.foreach(println)
     assert(z.collect.length == 0)
-
 
   }
 

@@ -1036,13 +1036,13 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     val adjustedPartitionMapWithIndex =
       // the zipWithIndex gives us the destination partition ID
       destinationPartitionMap.map(_.get).zipWithIndex.map(g => {
-        // in the case where we spand multiple referenceNames
+        // in the case where we span multiple referenceNames
         if (g._1._1.referenceName != g._1._2.referenceName) {
           // create a ReferenceRegion that goes to the end of the chromosome
           (ReferenceRegion(
             g._1._1.referenceName,
             g._1._1.start,
-            sequences.apply(g._1._1.referenceName).get.length),
+            g._1._1.end),
             g._2)
         } else {
           // otherwise we just have the ReferenceRegion span from partition
@@ -1077,28 +1077,9 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
       }
 
       referenceRegionKeyedGenomicRDD.mapPartitions(iter => {
-        // have a lastIndex allows us to keep track of where we previously
-          // assigned the last record. we need to keep track of this because our
-          // partitionMap is not guaranteed to cover all possible ReferenceRegions,
-          // and this presents a problem when we have records that do not map to
-          // any partition. without this, we would lose those records
-          //
-          // NOTE: NOT THREAD SAFE
-          //
-          var lastIndex = 0
         iter.flatMap(f => {
-          val rangeOfPartitions = partitionMapIntervals.get(f._1)
-
-          if (rangeOfPartitions.isEmpty) {
-            // if we come accross a positions that doesn't overlap with any partition,
-            // use the same index as the most recent record.
-            Iterable(((f._1, lastIndex), f._2))
-          } else {
-            // use the highest index that this record maps to as the lastIndex
-            // is this really the best way to handle this?
-            lastIndex = rangeOfPartitions.last._2
-            rangeOfPartitions.map(g => ((f._1, g._2), f._2))
-          }
+          val x = partitionMapIntervals.get(f._1, requireOverlap = false)
+          x.map(g => ((f._1, g._2), f._2))
         })
       }, preservesPartitioning = true)
         .repartitionAndSortWithinPartitions(
@@ -1107,6 +1088,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
         .map(f => (f._1._1, f._2))
     }
     finalPartitionedRDD.cache()
+
     // here we get the new partition map
     // for now, we can't use the left RDD's partition map because
     // the bounds don't always include the values we copartitioned with.
