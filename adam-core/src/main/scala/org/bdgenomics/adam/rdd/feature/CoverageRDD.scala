@@ -67,7 +67,10 @@ private[adam] class CoverageArraySerializer(kryo: Kryo) extends IntervalArraySer
  * @param sequences A dictionary describing the reference genome.
  */
 case class CoverageRDD(rdd: RDD[Coverage],
-                       sequences: SequenceDictionary) extends GenomicRDD[Coverage, CoverageRDD] {
+                       sequences: SequenceDictionary,
+                       partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends GenomicRDD[Coverage, CoverageRDD] {
+
+  override val sorted = partitionMap.isDefined
 
   protected def buildTree(rdd: RDD[(ReferenceRegion, Coverage)])(
     implicit tTag: ClassTag[Coverage]): IntervalArray[ReferenceRegion, Coverage] = {
@@ -229,8 +232,9 @@ case class CoverageRDD(rdd: RDD[Coverage],
    * @param newRdd The RDD to replace the underlying RDD with.
    * @return Returns a new CoverageRDD with the underlying RDD replaced.
    */
-  protected def replaceRdd(newRdd: RDD[Coverage]): CoverageRDD = {
-    copy(rdd = newRdd)
+  protected def replaceRdd(newRdd: RDD[Coverage],
+                           newPartitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): CoverageRDD = {
+    copy(rdd = newRdd, partitionMap = newPartitionMap)
   }
 
   /**

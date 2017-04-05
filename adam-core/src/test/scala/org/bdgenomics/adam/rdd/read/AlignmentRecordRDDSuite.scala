@@ -214,7 +214,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     ardd.saveAsSam(tempFile,
       asType = Some(SAMFormat.CRAM),
       asSingleFile = true,
-      isSorted = true)
+      sorted = true)
 
     val rddB = sc.loadBam(tempFile)
 
@@ -245,7 +245,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     ardd.saveAsSam(tempFile,
       asType = Some(SAMFormat.CRAM),
       asSingleFile = false,
-      isSorted = true)
+      sorted = true)
 
     val rddB = sc.loadBam(tempFile + "/part-r-00000")
 
@@ -364,7 +364,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     val actualSortedPath = tmpFile("sorted.sam")
     ardd.sortReadsByReferencePosition()
       .saveAsSam(actualSortedPath,
-        isSorted = true,
+        sorted = true,
         asSingleFile = true)
 
     checkFiles(testFile("sorted.sam"), actualSortedPath)
@@ -377,7 +377,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
 
     val actualUnorderedPath = tmpFile("unordered.sam")
     ardd.saveAsSam(actualUnorderedPath,
-      isSorted = false,
+      sorted = false,
       asSingleFile = true)
 
     checkFiles(unsortedPath, actualUnorderedPath)
@@ -390,7 +390,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
 
     val actualSortedPath = tmpFile("ordered.sam")
     reads.saveAsSam(actualSortedPath,
-      isSorted = true,
+      sorted = true,
       asSingleFile = true)
 
     checkFiles(testFile("ordered.sam"), actualSortedPath)
@@ -561,7 +561,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     reads.saveAsSam(outputPath,
       asType = Some(SAMFormat.SAM),
       asSingleFile = true,
-      isSorted = true)
+      sorted = true)
     assert(new File(outputPath).exists())
   }
 
@@ -590,7 +590,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     reads.saveAsSam(outputPath,
       asType = Some(SAMFormat.BAM),
       asSingleFile = true,
-      isSorted = true)
+      sorted = true)
     assert(new File(outputPath).exists())
   }
 
@@ -751,7 +751,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     // we can't guarantee that we get exactly the number of partitions requested,
     // we get close though
     assert(jRdd.rdd.partitions.length === 1)
-    assert(jRdd0.rdd.partitions.length === 5)
+    assert(jRdd0.rdd.partitions.length === 4)
 
     assert(jRdd.rdd.count === 5)
     assert(jRdd0.rdd.count === 5)
@@ -772,7 +772,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     // we can't guarantee that we get exactly the number of partitions requested,
     // we get close though
     assert(jRdd.rdd.partitions.length === 1)
-    assert(jRdd0.rdd.partitions.length === 5)
+    assert(jRdd0.rdd.partitions.length === 4)
 
     val c = jRdd.rdd.collect
     val c0 = jRdd0.rdd.collect
@@ -797,7 +797,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     // we can't guarantee that we get exactly the number of partitions requested,
     // we get close though
     assert(jRdd.rdd.partitions.length === 1)
-    assert(jRdd0.rdd.partitions.length === 5)
+    assert(jRdd0.rdd.partitions.length === 4)
 
     val c = jRdd.rdd.collect
     val c0 = jRdd0.rdd.collect
@@ -822,7 +822,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     // we can't guarantee that we get exactly the number of partitions requested,
     // we get close though
     assert(jRdd.rdd.partitions.length === 1)
-    assert(jRdd0.rdd.partitions.length === 5)
+    assert(jRdd0.rdd.partitions.length === 4)
 
     val c = jRdd.rdd.collect
     val c0 = jRdd0.rdd.collect
@@ -851,7 +851,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     // we can't guarantee that we get exactly the number of partitions requested,
     // we get close though
     assert(jRdd.rdd.partitions.length === 1)
-    assert(jRdd0.rdd.partitions.length === 5)
+    assert(jRdd0.rdd.partitions.length === 4)
 
     val c = jRdd.rdd.collect
     val c0 = jRdd0.rdd.collect
@@ -876,7 +876,7 @@ class AlignmentRecordRDDSuite extends ADAMFunSuite {
     // we can't guarantee that we get exactly the number of partitions requested,
     // we get close though
     assert(jRdd.rdd.partitions.length === 1)
-    assert(jRdd0.rdd.partitions.length === 5)
+    assert(jRdd0.rdd.partitions.length === 4)
 
     val c = jRdd0.rdd.collect // FIXME
     val c0 = jRdd0.rdd.collect

@@ -91,7 +91,10 @@ object FragmentRDD {
  */
 case class FragmentRDD(rdd: RDD[Fragment],
                        sequences: SequenceDictionary,
-                       recordGroups: RecordGroupDictionary) extends AvroReadGroupGenomicRDD[Fragment, FragmentRDD] {
+                       recordGroups: RecordGroupDictionary,
+                       partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends AvroReadGroupGenomicRDD[Fragment, FragmentRDD] {
+
+  override val sorted = partitionMap.isDefined
 
   protected def buildTree(rdd: RDD[(ReferenceRegion, Fragment)])(
     implicit tTag: ClassTag[Fragment]): IntervalArray[ReferenceRegion, Fragment] = {
@@ -105,8 +108,9 @@ case class FragmentRDD(rdd: RDD[Fragment],
    * @return Returns a new FragmentRDD where the underlying RDD has been
    *   swapped out.
    */
-  protected def replaceRdd(newRdd: RDD[Fragment]): FragmentRDD = {
-    copy(rdd = newRdd)
+  protected def replaceRdd(newRdd: RDD[Fragment],
+                           newPartitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): FragmentRDD = {
+    copy(rdd = newRdd, partitionMap = newPartitionMap)
   }
 
   /**

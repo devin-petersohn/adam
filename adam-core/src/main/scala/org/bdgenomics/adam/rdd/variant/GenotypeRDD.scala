@@ -77,7 +77,10 @@ private[adam] class GenotypeArraySerializer extends IntervalArraySerializer[Refe
 case class GenotypeRDD(rdd: RDD[Genotype],
                        sequences: SequenceDictionary,
                        @transient samples: Seq[Sample],
-                       @transient headerLines: Seq[VCFHeaderLine] = DefaultHeaderLines.allHeaderLines) extends MultisampleAvroGenomicRDD[Genotype, GenotypeRDD] {
+                       @transient headerLines: Seq[VCFHeaderLine] = DefaultHeaderLines.allHeaderLines,
+                       partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends MultisampleAvroGenomicRDD[Genotype, GenotypeRDD] {
+
+  override val sorted = partitionMap.isDefined
 
   protected def buildTree(rdd: RDD[(ReferenceRegion, Genotype)])(
     implicit tTag: ClassTag[Genotype]): IntervalArray[ReferenceRegion, Genotype] = {
@@ -168,8 +171,9 @@ case class GenotypeRDD(rdd: RDD[Genotype],
    * @param newRdd An RDD to replace the underlying RDD with.
    * @return Returns a new GenotypeRDD with the underlying RDD replaced.
    */
-  protected def replaceRdd(newRdd: RDD[Genotype]): GenotypeRDD = {
-    copy(rdd = newRdd)
+  protected def replaceRdd(newRdd: RDD[Genotype],
+                           newPartitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): GenotypeRDD = {
+    copy(rdd = newRdd, partitionMap = newPartitionMap)
   }
 
   /**

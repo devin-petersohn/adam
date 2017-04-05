@@ -99,8 +99,10 @@ object AlignmentRecordRDD {
 case class AlignmentRecordRDD(
     rdd: RDD[AlignmentRecord],
     sequences: SequenceDictionary,
-    recordGroups: RecordGroupDictionary) extends AvroReadGroupGenomicRDD[AlignmentRecord, AlignmentRecordRDD] {
+    recordGroups: RecordGroupDictionary,
+    partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends AvroReadGroupGenomicRDD[AlignmentRecord, AlignmentRecordRDD] {
 
+  override val sorted = partitionMap.isDefined
   /**
    * Replaces the underlying RDD and SequenceDictionary and emits a new object.
    *
@@ -109,14 +111,17 @@ case class AlignmentRecordRDD(
    * @return Returns a new AlignmentRecordRDD.
    */
   protected def replaceRddAndSequences(newRdd: RDD[AlignmentRecord],
-                                       newSequences: SequenceDictionary): AlignmentRecordRDD = {
+                                       newSequences: SequenceDictionary,
+                                       partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): AlignmentRecordRDD = {
     AlignmentRecordRDD(newRdd,
       newSequences,
-      recordGroups)
+      recordGroups,
+      partitionMap)
   }
 
-  protected def replaceRdd(newRdd: RDD[AlignmentRecord]): AlignmentRecordRDD = {
-    copy(rdd = newRdd)
+  protected def replaceRdd(newRdd: RDD[AlignmentRecord],
+                           newPartitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): AlignmentRecordRDD = {
+    copy(rdd = newRdd, partitionMap = newPartitionMap)
   }
 
   protected def buildTree(rdd: RDD[(ReferenceRegion, AlignmentRecord)])(
@@ -218,13 +223,13 @@ case class AlignmentRecordRDD(
    * or .bam.
    *
    * @param args Arguments defining where to save the file.
-   * @param isSorted True if input data is sorted. Sets the ordering in the SAM
+   * @param sorted True if input data is sorted. Sets the ordering in the SAM
    *   file header.
    * @return Returns true if the extension in args ended in .sam/.bam and the
    *   file was saved.
    */
   private[rdd] def maybeSaveBam(args: ADAMSaveAnyArgs,
-                                isSorted: Boolean = false): Boolean = {
+                                sorted: Boolean = sorted): Boolean = {
 
     if (args.outputPath.endsWith(".sam") ||
       args.outputPath.endsWith(".bam") ||
@@ -232,7 +237,7 @@ case class AlignmentRecordRDD(
       log.info("Saving data in SAM/BAM/CRAM format")
       saveAsSam(
         args.outputPath,
-        isSorted = isSorted,
+        sorted = sorted,
         asSingleFile = args.asSingleFile,
         deferMerging = args.deferMerging
       )
@@ -267,13 +272,13 @@ case class AlignmentRecordRDD(
    * as Parquet.
    *
    * @param args Save configuration arguments.
-   * @param isSorted If the output is sorted, this will modify the SAM/BAM header.
+   * @param sorted If the output is sorted, this will modify the SAM/BAM header.
    * @return Returns true if saving succeeded.
    */
   def save(args: ADAMSaveAnyArgs,
-           isSorted: Boolean = false): Boolean = {
+           sorted: Boolean = sorted): Boolean = {
 
-    (maybeSaveBam(args, isSorted) ||
+    (maybeSaveBam(args, sorted) ||
       maybeSaveFastq(args) ||
       { saveAsParquet(args); true })
   }
@@ -282,12 +287,12 @@ case class AlignmentRecordRDD(
    * Saves this RDD to disk, with the type identified by the extension.
    *
    * @param filePath Path to save the file at.
-   * @param isSorted Whether the file is sorted or not.
+   * @param sorted Whether the file is sorted or not.
    * @return Returns true if saving succeeded.
    */
   def save(filePath: java.lang.String,
-           isSorted: java.lang.Boolean): java.lang.Boolean = {
-    save(new JavaSaveArgs(filePath), isSorted)
+           sorted: java.lang.Boolean): java.lang.Boolean = {
+    save(new JavaSaveArgs(filePath), sorted)
   }
 
   /**
@@ -330,14 +335,14 @@ case class AlignmentRecordRDD(
    *
    * @return Returns a SAM/BAM formatted RDD of reads, as well as the file header.
    */
-  def convertToSam(isSorted: Boolean = false): (RDD[SAMRecordWritable], SAMFileHeader) = ConvertToSAM.time {
+  def convertToSam(sorted: Boolean = sorted): (RDD[SAMRecordWritable], SAMFileHeader) = ConvertToSAM.time {
 
     // create conversion object
     val adamRecordConverter = new AlignmentRecordConverter
 
     // create header and set sort order if needed
     val header = adamRecordConverter.createSAMHeader(sequences, recordGroups)
-    if (isSorted) {
+    if (sorted) {
       header.setSortOrder(SAMFileHeader.SortOrder.coordinate)
     } else {
       header.setSortOrder(SAMFileHeader.SortOrder.unsorted)
@@ -379,7 +384,7 @@ case class AlignmentRecordRDD(
    * @param asType Selects whether to save as SAM, BAM, or CRAM. The default
    *   value is None, which means the file type is inferred from the extension.
    * @param asSingleFile If true, saves output as a single file.
-   * @param isSorted If the output is sorted, this will modify the header.
+   * @param sorted If the output is sorted, this will modify the header.
    * @param deferMerging If true and asSingleFile is true, we will save the
    *   output shards as a headerless file, but we will not merge the shards.
    */
@@ -387,14 +392,14 @@ case class AlignmentRecordRDD(
     filePath: String,
     asType: Option[SAMFormat] = None,
     asSingleFile: Boolean = false,
-    isSorted: Boolean = false,
+    sorted: Boolean = sorted,
     deferMerging: Boolean = false): Unit = SAMSave.time {
 
     val fileType = asType.getOrElse(SAMFormat.inferFromFilePath(filePath))
 
     // convert the records
     val (convertRecords: RDD[SAMRecordWritable], header: SAMFileHeader) =
-      convertToSam(isSorted)
+      convertToSam(sorted)
 
     // add keys to our records
     val withKey = convertRecords.keyBy(v => new LongWritable(v.get.getAlignmentStart))
@@ -453,7 +458,7 @@ case class AlignmentRecordRDD(
       // we'll defer the writing to the cram container stream writer, and will
       // do validation here
 
-      require(isSorted, "To save as CRAM, input must be sorted.")
+      require(sorted, "To save as CRAM, input must be sorted.")
       require(sequences.records.forall(_.md5.isDefined),
         "To save as CRAM, all sequences must have an attached MD5. See %s".format(
           sequences))
@@ -543,17 +548,17 @@ case class AlignmentRecordRDD(
    * @param asType The SAMFormat to save as. If left null, we will infer the
    *   format from the file extension.
    * @param asSingleFile If true, saves output as a single file.
-   * @param isSorted If the output is sorted, this will modify the header.
+   * @param sorted If the output is sorted, this will modify the header.
    */
   def saveAsSam(
     filePath: java.lang.String,
     asType: SAMFormat,
     asSingleFile: java.lang.Boolean,
-    isSorted: java.lang.Boolean) {
+    sorted: java.lang.Boolean) {
     saveAsSam(filePath,
       asType = Option(asType),
       asSingleFile = asSingleFile,
-      isSorted = isSorted)
+      sorted = sorted)
   }
 
   /**
@@ -654,7 +659,7 @@ case class AlignmentRecordRDD(
    *
    * @param consensusModel The model to use for generating consensus sequences
    *   to realign against.
-   * @param isSorted If the input data is sorted, setting this parameter to true
+   * @param sorted If the input data is sorted, setting this parameter to true
    *   avoids a second sort.
    * @param maxIndelSize The size of the largest indel to use for realignment.
    * @param maxConsensusNumber The maximum number of consensus sequences to
@@ -671,7 +676,7 @@ case class AlignmentRecordRDD(
    */
   def realignIndels(
     consensusModel: ConsensusGenerator = new ConsensusGeneratorFromReads,
-    isSorted: Boolean = false,
+    sorted: Boolean = sorted,
     maxIndelSize: Int = 500,
     maxConsensusNumber: Int = 30,
     lodThreshold: Double = 5.0,
@@ -681,7 +686,7 @@ case class AlignmentRecordRDD(
     unclipReads: Boolean = false): AlignmentRecordRDD = RealignIndelsInDriver.time {
     replaceRdd(RealignIndels(rdd,
       consensusModel = consensusModel,
-      dataIsSorted = isSorted,
+      dataIsSorted = sorted,
       maxIndelSize = maxIndelSize,
       maxConsensusNumber = maxConsensusNumber,
       lodThreshold = lodThreshold,
