@@ -451,9 +451,7 @@ case class ReferenceRegion(
    * @return True if the position is within our region.
    */
   def contains(other: ReferencePosition): Boolean = {
-    strand == other.strand &&
-      referenceName == other.referenceName &&
-      start <= other.pos && end > other.pos
+    contains(ReferenceRegion(other.referenceName, other.pos, other.pos + 1, other.strand))
   }
 
   /**
@@ -488,8 +486,7 @@ case class ReferenceRegion(
    */
   def overlaps(other: ReferenceRegion): Boolean = {
     strand == other.strand &&
-      referenceName == other.referenceName &&
-      end > other.start && start < other.end
+      covers(other)
   }
 
   /**
