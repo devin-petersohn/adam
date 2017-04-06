@@ -340,25 +340,40 @@ case class ReferenceRegion(
    *
    * @throws AssertionError Thrown if regions are not overlapping or adjacent.
    *
-   * @param region Other region to merge with this region.
+   * @param other Other region to merge with this region.
    * @return The merger of both unions.
    *
    * @see hull
    */
-  def merge(region: ReferenceRegion): ReferenceRegion = {
-    assert(overlaps(region) || isAdjacent(region), "Cannot merge two regions that do not overlap or are not adjacent")
-    hull(region)
+  def merge(other: ReferenceRegion): ReferenceRegion = {
+    assert(overlaps(other) || isAdjacent(other), "Cannot merge two regions that do not overlap or are not adjacent")
+    merge(other, 1L)
+  }
+
+  /**
+   * Merges two reference regions that are within a threshold of each other.
+   * 
+   * @throws AssertionError Thrown if regions are no within the distance threshold.
+   *
+   * @param other Other region to merge with this region.
+   * @return The merger of both unions.
+   *
+   * @see hull
+   */
+  def merge(other: ReferenceRegion, distanceThreshold: Long): ReferenceRegion = {
+    assert(isNearby(other, distanceThreshold), "Cannot merge two regions that do not meet the distance threshold")
+    hull(other)
   }
 
   /**
    * Calculates the intersection of two reference regions.
    *
-   * @param region Region to intersect with.
+   * @param other Region to intersect with.
    * @return A smaller reference region.
    */
-  def intersection(region: ReferenceRegion): ReferenceRegion = {
-    assert(overlaps(region), "Cannot calculate the intersection of non-overlapping regions.")
-    ReferenceRegion(referenceName, max(start, region.start), min(end, region.end))
+  def intersection(other: ReferenceRegion): ReferenceRegion = {
+    assert(overlaps(other), "Cannot calculate the intersection of non-overlapping regions.")
+    ReferenceRegion(referenceName, max(start, other.start), min(end, other.end))
   }
 
   /**
@@ -367,15 +382,15 @@ case class ReferenceRegion(
    *
    * @throws AssertionError Thrown if regions are in different reference spaces.
    *
-   * @param region Other region to compute hull of with this region.
+   * @param other Other region to compute hull of with this region.
    * @return The convex hull of both unions.
    *
    * @see merge
    */
-  def hull(region: ReferenceRegion): ReferenceRegion = {
-    assert(strand == region.strand, "Cannot compute convex hull of differently oriented regions.")
-    assert(referenceName == region.referenceName, "Cannot compute convex hull of regions on different references.")
-    ReferenceRegion(referenceName, min(start, region.start), max(end, region.end))
+  def hull(other: ReferenceRegion): ReferenceRegion = {
+    assert(strand == other.strand, "Cannot compute convex hull of differently oriented regions.")
+    assert(referenceName == other.referenceName, "Cannot compute convex hull of regions on different references.")
+    ReferenceRegion(referenceName, min(start, other.start), max(end, other.end))
   }
 
   /**
@@ -383,11 +398,25 @@ case class ReferenceRegion(
    *
    * Adjacent regions do not overlap, but have no separation between start/end.
    *
-   * @param region Region to compare against.
+   * @param other Region to compare against.
    * @return True if regions are adjacent.
    */
-  def isAdjacent(region: ReferenceRegion): Boolean =
-    distance(region).exists(_ == 1)
+  def isAdjacent(other: ReferenceRegion): Boolean = {
+    isNearby(other, 1L) && !overlaps(other)
+  }
+
+  /**
+   * Returns whether two regions are nearby.
+   *
+   * Nearby regions may overlap, and have a thresholded distance between the 
+   * start/end.
+   *
+   * @param other Region to compare against.
+   * @return True if regions are nearby.
+   */
+  def isNearby(other: ReferenceRegion, distanceThreshold: Long): Boolean = {
+    distance(other).exists(_ <= distanceThreshold)
+  }
 
   /**
    * Returns the distance between this reference region and another region in
@@ -451,7 +480,7 @@ case class ReferenceRegion(
    * @return True if the position is within our region.
    */
   def contains(other: ReferencePosition): Boolean = {
-    contains(ReferenceRegion(other.referenceName, other.pos, other.pos + 1, other.strand))
+    contains(ReferenceRegion(other))
   }
 
   /**
