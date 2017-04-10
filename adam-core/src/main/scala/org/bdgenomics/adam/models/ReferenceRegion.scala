@@ -325,7 +325,7 @@ case class ReferenceRegion(
     extends Comparable[ReferenceRegion]
     with Interval[ReferenceRegion] {
 
-  assert(start >= 0 && end >= start,
+  require(start >= 0 && end >= start,
     "Failed when trying to create region %s %d %d on %s strand.".format(
       referenceName, start, end, strand))
 
@@ -338,7 +338,7 @@ case class ReferenceRegion(
   /**
    * Merges two reference regions that are contiguous.
    *
-   * @throws AssertionError Thrown if regions are not overlapping or adjacent.
+   * @throws IllegalArgumentException Thrown if regions are not overlapping or adjacent.
    *
    * @param other Other region to merge with this region.
    * @return The merger of both unions.
@@ -346,14 +346,14 @@ case class ReferenceRegion(
    * @see hull
    */
   def merge(other: ReferenceRegion): ReferenceRegion = {
-    assert(overlaps(other) || isAdjacent(other), "Cannot merge two regions that do not overlap or are not adjacent")
+    require(overlaps(other) || isAdjacent(other), "Cannot merge two regions that do not overlap or are not adjacent")
     merge(other, 1L)
   }
 
   /**
    * Merges two reference regions that are within a threshold of each other.
-   * 
-   * @throws AssertionError Thrown if regions are no within the distance threshold.
+   *
+   * @throws IllegalArgumentException Thrown if regions are no within the distance threshold.
    *
    * @param other Other region to merge with this region.
    * @return The merger of both unions.
@@ -361,7 +361,8 @@ case class ReferenceRegion(
    * @see hull
    */
   def merge(other: ReferenceRegion, distanceThreshold: Long): ReferenceRegion = {
-    assert(isNearby(other, distanceThreshold), "Cannot merge two regions that do not meet the distance threshold")
+    require(isNearby(other, distanceThreshold), "Cannot merge two regions that do not meet the distance threshold")
+    require(distanceThreshold > 0, "Distance must be non-negative number")
     hull(other)
   }
 
@@ -372,7 +373,7 @@ case class ReferenceRegion(
    * @return A smaller reference region.
    */
   def intersection(other: ReferenceRegion): ReferenceRegion = {
-    assert(overlaps(other), "Cannot calculate the intersection of non-overlapping regions.")
+    require(overlaps(other), "Cannot calculate the intersection of non-overlapping regions.")
     ReferenceRegion(referenceName, max(start, other.start), min(end, other.end))
   }
 
@@ -380,7 +381,7 @@ case class ReferenceRegion(
    * Creates a region corresponding to the convex hull of two regions. Has no preconditions about the adjacency or
    * overlap of two regions. However, regions must be in the same reference space.
    *
-   * @throws AssertionError Thrown if regions are in different reference spaces.
+   * @throws IllegalArgumentException Thrown if regions are in different reference spaces.
    *
    * @param other Other region to compute hull of with this region.
    * @return The convex hull of both unions.
@@ -388,8 +389,8 @@ case class ReferenceRegion(
    * @see merge
    */
   def hull(other: ReferenceRegion): ReferenceRegion = {
-    assert(strand == other.strand, "Cannot compute convex hull of differently oriented regions.")
-    assert(referenceName == other.referenceName, "Cannot compute convex hull of regions on different references.")
+    require(strand == other.strand, "Cannot compute convex hull of differently oriented regions.")
+    require(referenceName == other.referenceName, "Cannot compute convex hull of regions on different references.")
     ReferenceRegion(referenceName, min(start, other.start), max(end, other.end))
   }
 
@@ -408,7 +409,7 @@ case class ReferenceRegion(
   /**
    * Returns whether two regions are nearby.
    *
-   * Nearby regions may overlap, and have a thresholded distance between the 
+   * Nearby regions may overlap, and have a thresholded distance between the
    * start/end.
    *
    * @param other Region to compare against.
@@ -508,6 +509,18 @@ case class ReferenceRegion(
   }
 
   /**
+   * Checks if our region overlaps (wholly or partially) another region,
+   * independent of strand.
+   *
+   * @param other The region to compare against.
+   * @param threshold The threshold within which the region must match.
+   * @return True if any section of the two regions overlap.
+   */
+  def covers(other: ReferenceRegion, threshold: Long): Boolean = {
+    covers(other) || isNearby(other, threshold)
+  }
+
+  /**
    * Checks if our region overlaps (wholly or partially) another region.
    *
    * @param other The region to compare against.
@@ -516,6 +529,17 @@ case class ReferenceRegion(
   def overlaps(other: ReferenceRegion): Boolean = {
     strand == other.strand &&
       covers(other)
+  }
+
+  /**
+   * Checks if our region overlaps (wholly or partially) another region.
+   *
+   * @param other The region to compare against.
+   * @param threshold The threshold within which the region must match.
+   * @return True if any section of the two regions overlap.
+   */
+  def overlaps(other: ReferenceRegion, threshold: Long): Boolean = {
+    overlaps(other) || isNearby(other, threshold)
   }
 
   /**

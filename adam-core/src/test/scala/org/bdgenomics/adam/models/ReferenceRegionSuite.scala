@@ -50,7 +50,7 @@ class ReferenceRegionSuite extends FunSuite {
   }
 
   test("merge") {
-    intercept[AssertionError] {
+    intercept[IllegalArgumentException] {
       region("chr0", 10, 100).merge(region("chr1", 10, 100))
     }
 
@@ -64,9 +64,26 @@ class ReferenceRegionSuite extends FunSuite {
     assert(r1.merge(r1) === r1)
     assert(r1.merge(r2) === r12)
     assert(r1.merge(r3) === r13)
+
+    val r4 = region("chr0", 1, 100)
+    val r5 = region("chr0", 102, 202)
+    val r6 = region("chr0", 2, 5)
+
+    val r45 = region("chr0", 1, 202)
+
+    assert(r4.merge(r5, 3) === r45)
+
+    intercept[IllegalArgumentException] {
+      r4.merge(r5, -1)
+    }
+
+    intercept[IllegalArgumentException] {
+      r4.merge(r5, 1L)
+    }
+
   }
 
-  test("overlaps") {
+  test("overlaps and covers") {
 
     // contained
     assert(region("chr0", 10, 100).overlaps(region("chr0", 20, 50)))
@@ -101,6 +118,12 @@ class ReferenceRegionSuite extends FunSuite {
     // different sequences
     assert(!region("chr0", 10, 100).overlaps(region("chr1", 50, 200)))
     assert(!region("chr0", 10, 100).covers(region("chr1", 50, 200)))
+
+    // thresholded
+    assert(region("chr0", 1, 100).overlaps(region("chr0", 101, 201), 2))
+    assert(region("chr0", 1, 100).covers(region("chr0", 101, 201), 2))
+    assert(!region("chr0", 1, 100).overlaps(region("chr0", 101, 201), 1))
+    assert(!region("chr0", 1, 100).covers(region("chr0", 101, 201), 1))
   }
 
   test("distance(: ReferenceRegion)") {
@@ -255,8 +278,28 @@ class ReferenceRegionSuite extends FunSuite {
 
     assert(!r1.isAdjacent(r2))
 
-    intercept[AssertionError] {
+    intercept[IllegalArgumentException] {
       r1.merge(r2)
+    }
+  }
+
+  test("validate that nearby regions can be merged") {
+    val r1 = region("chr1", 0L, 5L)
+    val r2 = region("chr1", 7L, 10L)
+
+    assert(r1.isNearby(r2, 3))
+
+    assert(r1.merge(r2, 3) == region("chr1", 0L, 10L))
+  }
+
+  test("validate that non-nearby regions cannot be merged") {
+    val r1 = region("chr1", 0L, 5L)
+    val r2 = region("chr1", 7L, 10L)
+
+    assert(!r1.isNearby(r2, 2L))
+
+    intercept[IllegalArgumentException] {
+      r1.merge(r2, 2)
     }
   }
 
@@ -299,10 +342,10 @@ class ReferenceRegionSuite extends FunSuite {
   }
 
   test("intersection fails on non-overlapping regions") {
-    intercept[AssertionError] {
+    intercept[IllegalArgumentException] {
       ReferenceRegion("chr1", 1L, 10L).intersection(ReferenceRegion("chr1", 11L, 20L))
     }
-    intercept[AssertionError] {
+    intercept[IllegalArgumentException] {
       ReferenceRegion("chr1", 1L, 10L).intersection(ReferenceRegion("chr2", 1L, 10L))
     }
   }
