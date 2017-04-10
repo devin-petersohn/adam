@@ -560,12 +560,30 @@ case class ReferenceRegion(
   }
 
   override def hashCode: Int = {
-    var result = 37
-    result = 41 * result + (if (referenceName != null) referenceName.hashCode else 0)
-    result = 41 * result + start.hashCode
-    result = 41 * result + end.hashCode
-    result = 41 * result + (if (strand != null) strand.ordinal() else 0)
-    result
+    // add 37 here because this is the start of the hashCode
+    val nameHashCode = 37 + {
+      if (referenceName != null) {
+        referenceName.hashCode
+      } else {
+        0
+      }
+    }
+    val strandHashCode =
+      if (strand != null) {
+        strand.ordinal()
+      } else {
+        0
+      }
+
+    val listOfHashCodes = List(nameHashCode, start.hashCode, end.hashCode, strandHashCode)
+
+    listOfHashCodes.foldLeft(1)((b, a) => {
+      if (b > 1) {
+        b * 41 + a
+      } else {
+        a
+      }
+    })
   }
 }
 
