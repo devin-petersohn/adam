@@ -90,8 +90,11 @@ private[adam] class VariantContextArraySerializer extends IntervalArraySerialize
 case class VariantContextRDD(rdd: RDD[VariantContext],
                              sequences: SequenceDictionary,
                              @transient samples: Seq[Sample],
-                             @transient headerLines: Seq[VCFHeaderLine] = DefaultHeaderLines.allHeaderLines) extends MultisampleGenomicRDD[VariantContext, VariantContextRDD]
+                             @transient headerLines: Seq[VCFHeaderLine] = DefaultHeaderLines.allHeaderLines,
+                             partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends MultisampleGenomicRDD[VariantContext, VariantContextRDD]
     with Logging {
+
+  override val sorted = partitionMap.isDefined
 
   protected def buildTree(rdd: RDD[(ReferenceRegion, VariantContext)])(
     implicit tTag: ClassTag[VariantContext]): IntervalArray[ReferenceRegion, VariantContext] = {
@@ -121,7 +124,7 @@ case class VariantContextRDD(rdd: RDD[VariantContext],
    * Converts an RDD of ADAM VariantContexts to HTSJDK VariantContexts
    * and saves to disk as VCF.
    *
-   * @param filePath The filepath to save to.
+   * @param args The arguments for saving the data.
    * @param sortOnSave Whether to sort before saving.
    */
   def saveAsVcf(args: SaveArgs,
@@ -223,8 +226,9 @@ case class VariantContextRDD(rdd: RDD[VariantContext],
    * @return Returns a new VariantContextRDD where the underlying RDD has
    *   been replaced.
    */
-  protected def replaceRdd(newRdd: RDD[VariantContext]): VariantContextRDD = {
-    copy(rdd = newRdd)
+  protected def replaceRdd(newRdd: RDD[VariantContext],
+                           newPartitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): VariantContextRDD = {
+    copy(rdd = newRdd, partitionMap = newPartitionMap)
   }
 
   /**

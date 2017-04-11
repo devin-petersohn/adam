@@ -203,7 +203,7 @@ class ParallelFileMergerSuite extends ADAMFunSuite {
     val outPath = tmpFile("out.cram")
 
     reads.transform(_.repartition(4))
-      .saveAsSam(outPath, isSorted = true, asSingleFile = true, deferMerging = true)
+      .saveAsSam(outPath, sorted = true, asSingleFile = true, deferMerging = true)
 
     val fs = FileSystem.get(sc.hadoopConfiguration)
     val filesToMerge = (Seq(outPath + "_head") ++ (0 until 4).map(i => {

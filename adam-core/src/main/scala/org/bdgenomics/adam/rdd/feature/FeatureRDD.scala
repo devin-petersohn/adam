@@ -113,7 +113,7 @@ object FeatureRDD {
    * aggregate to rebuild the SequenceDictionary.
    *
    * @param rdd The underlying Feature RDD to build from.
-   * @param optStorageLevel Optional storage level to use for cache before building the SequenceDictionary.
+   * @param storageLevel Optional storage level to use for cache before building the SequenceDictionary.
    * @return Returns a new FeatureRDD.
    */
   def inferSequenceDictionary(
@@ -133,6 +133,17 @@ object FeatureRDD {
     val sd = new SequenceDictionary(sequenceRecords.collect.toVector)
 
     FeatureRDD(rdd, sd)
+  }
+
+  /**
+   * Builds a FeatureRDD without SequenceDictionary infomration by running an
+   * aggregate to rebuilt the SequenceDicitonary.
+   *
+   * @param rdd The underlying Feature RDD to build from.
+   * @return Returns a new FeatureRDD.
+   */
+  def apply(rdd: RDD[Feature]): FeatureRDD = {
+    inferSequenceDictionary(rdd, Some(StorageLevel.MEMORY_ONLY))
   }
 
   /**
@@ -243,7 +254,10 @@ object FeatureRDD {
  * @param sequences The reference genome this data is aligned to.
  */
 case class FeatureRDD(rdd: RDD[Feature],
-                      sequences: SequenceDictionary) extends AvroGenomicRDD[Feature, FeatureRDD] with Logging {
+                      sequences: SequenceDictionary,
+                      partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None) extends AvroGenomicRDD[Feature, FeatureRDD] with Logging {
+
+  override val sorted = partitionMap.isDefined
 
   protected def buildTree(rdd: RDD[(ReferenceRegion, Feature)])(
     implicit tTag: ClassTag[Feature]): IntervalArray[ReferenceRegion, Feature] = {
@@ -298,8 +312,9 @@ case class FeatureRDD(rdd: RDD[Feature],
    * @param newRdd The RDD to replace the underlying RDD with.
    * @return Returns a new FeatureRDD with the underlying RDD replaced.
    */
-  protected def replaceRdd(newRdd: RDD[Feature]): FeatureRDD = {
-    copy(rdd = newRdd)
+  protected def replaceRdd(newRdd: RDD[Feature],
+                           newPartitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]] = None): FeatureRDD = {
+    copy(rdd = newRdd, partitionMap = newPartitionMap)
   }
 
   /**

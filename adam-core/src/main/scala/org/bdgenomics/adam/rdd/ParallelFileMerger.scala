@@ -302,7 +302,7 @@ private[rdd] object ParallelFileMerger extends Logging {
 
     // broadcast and repartition the files, and then do the writes
     val rdd = sc.parallelize(merges)
-      .partitionBy(ManualRegionPartitioner(merges.size))
+      .partitionBy(new ReferenceRegionRangePartitioner(merges.size))
     val numBlocksToWrite = merges.size
     val broadcastConf = sc.broadcast(conf)
     val blocksWritten = rdd.foreach(merge => {

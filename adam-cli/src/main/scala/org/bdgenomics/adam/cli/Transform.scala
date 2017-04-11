@@ -194,7 +194,7 @@ class Transform(protected val args: TransformArgs) extends BDGSparkCommand[Trans
       // run realignment
       val realignmentRdd = rdd.realignIndels(
         consensusGenerator,
-        isSorted = false,
+        sorted = false,
         maxIndelSize = args.maxIndelSize,
         maxConsensusNumber = args.maxConsensusNumber,
         lodThreshold = args.lodThreshold,
@@ -490,7 +490,7 @@ class Transform(protected val args: TransformArgs) extends BDGSparkCommand[Trans
     }
 
     outputRdd.save(args,
-      isSorted = args.sortReads || args.sortLexicographically)
+      sorted = args.sortReads || args.sortLexicographically)
   }
 
   private def createKnownSnpsTable(sc: SparkContext): SnpTable = {
