@@ -350,8 +350,23 @@ class ReferenceRegionSuite extends FunSuite {
     }
   }
 
+  test("intersection fails when minOverlap is not met") {
+    intercept[IllegalArgumentException] {
+      ReferenceRegion("chr1", 1L, 10L).intersection(ReferenceRegion("chr1", 9L, 20L), 3)
+    }
+    intercept[IllegalArgumentException] {
+      ReferenceRegion("chr1", 1L, 10L).intersection(ReferenceRegion("chr1", 11L, 20L), 2)
+    }
+  }
+
   test("compute intersection") {
     val overlapRegion = ReferenceRegion("chr1", 1L, 10L).intersection(ReferenceRegion("chr1", 5L, 15L))
+    assert(overlapRegion.referenceName === "chr1")
+    assert(overlapRegion.start === 5L)
+    assert(overlapRegion.end === 10L)
+
+    val minOverlap = 4
+    val secondOverlapRegion = ReferenceRegion("chr1", 1L, 10L).intersection(ReferenceRegion("chr1", 5L, 15L), minOverlap)
     assert(overlapRegion.referenceName === "chr1")
     assert(overlapRegion.start === 5L)
     assert(overlapRegion.end === 10L)

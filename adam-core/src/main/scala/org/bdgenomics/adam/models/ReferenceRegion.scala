@@ -362,7 +362,7 @@ case class ReferenceRegion(
    */
   def merge(other: ReferenceRegion, distanceThreshold: Long): ReferenceRegion = {
     require(isNearby(other, distanceThreshold), "Cannot merge two regions that do not meet the distance threshold")
-    require(distanceThreshold > 0, "Distance must be non-negative number")
+    require(distanceThreshold >= 0, "Distance must be non-negative number")
     hull(other)
   }
 
@@ -374,6 +374,20 @@ case class ReferenceRegion(
    */
   def intersection(other: ReferenceRegion): ReferenceRegion = {
     require(overlaps(other), "Cannot calculate the intersection of non-overlapping regions.")
+    ReferenceRegion(referenceName, max(start, other.start), min(end, other.end))
+  }
+
+  /**
+   * Calculates the intersection of two reference regions given a minimum
+   * overlap.
+   *
+   * @param other Region to intersect with.
+   * @param minOverlap The mimimum amount of positions that the two regions
+   *        must overlap by
+   * @return A smaller reference region
+   */
+  def intersection(other: ReferenceRegion, minOverlap: Long): ReferenceRegion = {
+    require(overlapsBy(other).exists(_ >= minOverlap), "Other region does not meet minimum overlap provided")
     ReferenceRegion(referenceName, max(start, other.start), min(end, other.end))
   }
 
@@ -447,6 +461,27 @@ case class ReferenceRegion(
   }
 
   /**
+   * Returns the amount of overlap between this reference region and another
+   * region in the reference space.
+   *
+   * @param other Region to compare against.
+   * @return Returns an option containing the number of positions of overlap
+   *         between two points. If the two regions do not overlap, we return
+   *         an empty option.
+   */
+  def overlapsBy(other: ReferenceRegion): Option[Long] = {
+    if (overlaps(other)) {
+      if (other.start <= end) {
+        Some(end - other.start + 1)
+      } else {
+        Some(other.end - start + 1)
+      }
+    } else {
+      None
+    }
+  }
+
+  /**
    * Extends the current reference region at both the start and end.
    *
    * @param by The number of bases to extend the region by from both the start
@@ -509,7 +544,7 @@ case class ReferenceRegion(
   }
 
   /**
-   * Checks if our region overlaps (wholly or partially) another region,
+   * Checks if our region overlaps or is within a threshold of another region,
    * independent of strand.
    *
    * @param other The region to compare against.
@@ -521,7 +556,7 @@ case class ReferenceRegion(
   }
 
   /**
-   * Checks if our region overlaps (wholly or partially) another region.
+   * Checks if our region overlaps or is within a threshold of another region.
    *
    * @param other The region to compare against.
    * @return True if any section of the two regions overlap.

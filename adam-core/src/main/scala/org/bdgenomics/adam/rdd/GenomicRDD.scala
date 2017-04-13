@@ -125,8 +125,8 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
     replaceRdd(tFn(rdd))
   }
 
-  private[rdd] def sorted: Boolean
-  private[rdd] def partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]]
+  def sorted: Boolean
+  def partitionMap: Option[Array[Option[(ReferenceRegion, ReferenceRegion)]]]
 
   /**
    * This repartition method repartitions all data in this.rdd and distributes it as evenly as possible
@@ -461,7 +461,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
 
   protected def getReferenceRegions(elem: T): Seq[ReferenceRegion]
 
-  protected def flattenRddByRegions(): RDD[(ReferenceRegion, T)] = {
+  def flattenRddByRegions(): RDD[(ReferenceRegion, T)] = {
     rdd.flatMap(elem => {
       getReferenceRegions(elem).map(r => (r, elem))
     })
