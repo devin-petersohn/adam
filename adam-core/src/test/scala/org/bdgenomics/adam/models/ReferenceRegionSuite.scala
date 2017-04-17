@@ -89,6 +89,10 @@ class ReferenceRegionSuite extends FunSuite {
     assert(region("chr0", 10, 100).overlaps(region("chr0", 20, 50)))
     assert(region("chr0", 10, 100).covers(region("chr0", 20, 50)))
 
+    // equivalent regions
+    assert(region("chr0", 10, 100).overlaps(region("chr0", 10, 100)))
+    assert(region("chr0", 10, 100).covers(region("chr0", 10, 100)))
+
     // different strands
     assert(!ReferenceRegion("chr0", 10, 100, strand = Strand.FORWARD)
       .overlaps(ReferenceRegion("chr0", 20, 50, strand = Strand.REVERSE)))
@@ -126,6 +130,27 @@ class ReferenceRegionSuite extends FunSuite {
     assert(!region("chr0", 1, 100).covers(region("chr0", 101, 201), 1))
   }
 
+  test("overlapsBy and coversBy") {
+    // right side
+    assert(region("chr0", 10, 100).overlapsBy(region("chr0", 50, 250)).exists(_ == 50))
+    assert(region("chr0", 10, 100).coversBy(region("chr0", 50, 250)).exists(_ == 50))
+
+    // left side
+    assert(region("chr0", 10, 100).overlapsBy(region("chr0", 5, 15)).exists(_ == 5))
+    assert(region("chr0", 10, 100).coversBy(region("chr0", 5, 15)).exists(_ == 5))
+
+    // different strands
+    assert(ReferenceRegion("chr0", 10, 100, strand = Strand.FORWARD)
+      .overlapsBy(ReferenceRegion("chr0", 20, 50, strand = Strand.REVERSE)).isEmpty)
+    assert(ReferenceRegion("chr0", 10, 100, strand = Strand.FORWARD)
+      .coversBy(ReferenceRegion("chr0", 20, 50, strand = Strand.REVERSE)).exists(_ == 30))
+
+    // contained
+    assert(region("chr0", 10, 100).overlapsBy(region("chr0", 50, 75)).exists(_ == 25))
+    assert(region("chr0", 10, 100).coversBy(region("chr0", 50, 75)).exists(_ == 25))
+
+  }
+
   test("distance(: ReferenceRegion)") {
 
     // distance on the right
@@ -136,6 +161,10 @@ class ReferenceRegionSuite extends FunSuite {
 
     // different sequences
     assert(region("chr0", 100, 200).distance(region("chr1", 10, 50)) === None)
+
+    // different strands
+    assert(ReferenceRegion("chr0", 10, 100, strand = Strand.FORWARD)
+      .distance(ReferenceRegion("chr0", 200, 300, strand = Strand.REVERSE)).isEmpty)
 
     // touches on the right
     assert(region("chr0", 10, 100).distance(region("chr0", 100, 200)) === Some(1))
@@ -167,6 +196,26 @@ class ReferenceRegionSuite extends FunSuite {
     // different sequences
     assert(region("chr0", 100, 200).distance(point("chr1", 50)) === None)
 
+  }
+
+  test("unstrandedDistance") {
+    // distance on the right
+    assert(ReferenceRegion("chr0", 10, 100, Strand.FORWARD).unstrandedDistance(ReferenceRegion("chr0", 200, 300, Strand.REVERSE)) === Some(101))
+
+    // distance on the left
+    assert(ReferenceRegion("chr0", 100, 200, Strand.FORWARD).unstrandedDistance(ReferenceRegion("chr0", 10, 50, Strand.REVERSE)) === Some(51))
+
+    // different sequences
+    assert(ReferenceRegion("chr0", 100, 200, Strand.FORWARD).unstrandedDistance(ReferenceRegion("chr1", 10, 50, Strand.REVERSE)) === None)
+
+    // touches on the right
+    assert(ReferenceRegion("chr0", 10, 100, Strand.FORWARD).unstrandedDistance(ReferenceRegion("chr0", 100, 200, Strand.REVERSE)) === Some(1))
+
+    // overlaps
+    assert(ReferenceRegion("chr0", 10, 100, Strand.FORWARD).unstrandedDistance(ReferenceRegion("chr0", 50, 150, Strand.REVERSE)) === Some(0))
+
+    // touches on the left
+    assert(ReferenceRegion("chr0", 10, 100, Strand.FORWARD).unstrandedDistance(ReferenceRegion("chr0", 0, 10, Strand.REVERSE)) === Some(1))
   }
 
   test("create region from unmapped read fails") {

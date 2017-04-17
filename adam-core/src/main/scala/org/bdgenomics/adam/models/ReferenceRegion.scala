@@ -24,9 +24,7 @@ import org.bdgenomics.utils.interval.array.Interval
 import scala.math.{ max, min }
 
 trait ReferenceOrdering[T <: ReferenceRegion] extends Ordering[T] {
-  private def regionCompare(
-    a: T,
-    b: T): Int = {
+  private def regionCompare(a: T, b: T): Int = {
     if (a.referenceName != b.referenceName) {
       a.referenceName.compareTo(b.referenceName)
     } else if (a.start != b.start) {
@@ -36,9 +34,7 @@ trait ReferenceOrdering[T <: ReferenceRegion] extends Ordering[T] {
     }
   }
 
-  def compare(
-    a: T,
-    b: T): Int = {
+  def compare(a: T, b: T): Int = {
     val rc = regionCompare(a, b)
     if (rc == 0) {
       a.strand.ordinal compare b.strand.ordinal
@@ -403,8 +399,8 @@ case class ReferenceRegion(
    * @see merge
    */
   def hull(other: ReferenceRegion): ReferenceRegion = {
-    require(strand == other.strand, "Cannot compute convex hull of differently oriented regions.")
-    require(referenceName == other.referenceName, "Cannot compute convex hull of regions on different references.")
+    require(sameStrand(other), "Cannot compute convex hull of differently oriented regions.")
+    require(sameReferenceName(other), "Cannot compute convex hull of regions on different references.")
     ReferenceRegion(referenceName, min(start, other.start), max(end, other.end))
   }
 
@@ -417,7 +413,7 @@ case class ReferenceRegion(
    * @return True if regions are adjacent.
    */
   def isAdjacent(other: ReferenceRegion): Boolean = {
-    isNearby(other, 1L) && !overlaps(other)
+    distance(other).exists(_ == 1)
   }
 
   /**
@@ -447,17 +443,32 @@ case class ReferenceRegion(
    *   the point is not in our reference space, we return an empty option.
    */
   def distance(other: ReferenceRegion): Option[Long] = {
-    if (referenceName == other.referenceName && strand == other.strand) {
+    if (sameReferenceName(other) && sameStrand(other)) {
       if (overlaps(other)) {
         Some(0)
-      } else if (other.start >= end) {
-        Some(other.start - end + 1)
       } else {
-        Some(start - other.end + 1)
+        Some(max(start, other.start) - min(end, other.end) + 1)
       }
     } else {
       None
     }
+  }
+
+  /**
+   * Returns the unstranded distance between this reference region and another
+   * region in the reference space.
+   *
+   * @note Distance here is defined as the minimum distance between any point
+   * within this region, and any point within the other region we are measuring
+   * against. If the two sets overlap, the distance will be 0. If the sets abut,
+   * the distance will be 1. Else, the distance will be greater.
+   *
+   * @param other Region to compare against.
+   * @return Returns an option containing the distance between two points. If
+   *   the point is not in our reference space, we return an empty option.
+   */
+  def unstrandedDistance(other: ReferenceRegion): Option[Long] = {
+    disorient.distance(other.disorient)
   }
 
   /**
@@ -471,14 +482,23 @@ case class ReferenceRegion(
    */
   def overlapsBy(other: ReferenceRegion): Option[Long] = {
     if (overlaps(other)) {
-      if (other.start <= end) {
-        Some(end - other.start + 1)
-      } else {
-        Some(other.end - start + 1)
-      }
+      Some(min(end, other.end) - max(start, other.start))
     } else {
       None
     }
+  }
+
+  /**
+   * Returns the amount of coverage between this reference region and another
+   * region in the reference space.
+   *
+   * @param other Region to compare against.
+   * @return Returns an option containing the number of positions of coverage
+   *         between two points. If the two regions do not cover, we return
+   *         an empty option.
+   */
+  def coversBy(other: ReferenceRegion): Option[Long] = {
+    disorient.overlapsBy(other.disorient)
   }
 
   /**
@@ -503,10 +523,7 @@ case class ReferenceRegion(
    *   moved.
    */
   def pad(byStart: Long, byEnd: Long): ReferenceRegion = {
-    new ReferenceRegion(referenceName,
-      start - byStart,
-      end + byEnd,
-      strand)
+    new ReferenceRegion(referenceName, start - byStart, end + byEnd, strand)
   }
 
   /**
@@ -526,8 +543,8 @@ case class ReferenceRegion(
    * @return True if the region is wholly contained within our region.
    */
   def contains(other: ReferenceRegion): Boolean = {
-    strand == other.strand &&
-      referenceName == other.referenceName &&
+    sameStrand(other) &&
+      sameReferenceName(other) &&
       start <= other.start && end >= other.end
   }
 
@@ -539,8 +556,7 @@ case class ReferenceRegion(
    * @return True if any section of the two regions overlap.
    */
   def covers(other: ReferenceRegion): Boolean = {
-    referenceName == other.referenceName &&
-      end > other.start && start < other.end
+    disorient.overlaps(other.disorient)
   }
 
   /**
@@ -552,7 +568,7 @@ case class ReferenceRegion(
    * @return True if any section of the two regions overlap.
    */
   def covers(other: ReferenceRegion, threshold: Long): Boolean = {
-    covers(other) || isNearby(other, threshold)
+    covers(other) || disorient.isNearby(other.disorient, threshold)
   }
 
   /**
@@ -562,8 +578,9 @@ case class ReferenceRegion(
    * @return True if any section of the two regions overlap.
    */
   def overlaps(other: ReferenceRegion): Boolean = {
-    strand == other.strand &&
-      covers(other)
+    sameStrand(other) &&
+      sameReferenceName(other) &&
+      end > other.start && start < other.end
   }
 
   /**
@@ -585,6 +602,26 @@ case class ReferenceRegion(
    */
   def compareTo(that: ReferenceRegion): Int = {
     RegionOrdering.compare(this, that)
+  }
+
+  /**
+   * Determines if two regions are colocated on the same strand.
+   *
+   * @param other The other region.
+   * @return True if the two are on the same strand, false otherwise
+   */
+  def sameStrand(other: ReferenceRegion): Boolean = {
+    strand == other.strand
+  }
+
+  /**
+   * Determines if two regions are colocated on the same reference name.
+   *
+   * @param other The other region.
+   * @return True if the two are on the same reference name, false otherwise.
+   */
+  def sameReferenceName(other: ReferenceRegion): Boolean = {
+    referenceName == other.referenceName
   }
 
   /**
@@ -612,12 +649,8 @@ case class ReferenceRegion(
 
     val listOfHashCodes = List(nameHashCode, start.hashCode, end.hashCode, strandHashCode)
 
-    listOfHashCodes.foldLeft(1)((b, a) => {
-      if (b > 1) {
-        b * 41 + a
-      } else {
-        a
-      }
+    listOfHashCodes.foldLeft(0)((b, a) => {
+      b * 41 + a
     })
   }
 }

@@ -1012,7 +1012,7 @@ trait GenomicRDD[T, U <: GenomicRDD[T, U]] {
    * @param rddToCoPartitionWith the rdd that this.rdd will be copartitioned with
    * @return returns the newly repartitioned rdd that is copartitioned with rddToCoPartitionWith
    */
-  private[rdd] def copartitionByReferenceRegion[X, Y <: GenomicRDD[X, Y]](
+  def copartitionByReferenceRegion[X, Y <: GenomicRDD[X, Y]](
     rddToCoPartitionWith: GenomicRDD[X, Y])(implicit tTag: ClassTag[T], xTag: ClassTag[X]): U = {
 
     // if the other RDD is not sorted, we can't guarantee proper copartition
